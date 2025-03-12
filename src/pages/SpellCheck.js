@@ -6,7 +6,7 @@ export const SpellCheck = ({ onAfterLogout }) => {
   // we need to use the ref here cause it's not reflacting to the function as we calling it direct after the onChange
   const enteredTextRef = useRef("");
   const [misspelledWords, setMisspelledWords] = useState([]);
-
+  const [isLoading, setIsLoading] = useState(false);
   const onCheckSpelling = useCallback(async () => {
     const enteredText = enteredTextRef.current.trim();
     if (!enteredText) {
@@ -14,6 +14,7 @@ export const SpellCheck = ({ onAfterLogout }) => {
       enteredTextRef.current = "";
       return;
     }
+    setIsLoading(true);
 
     const promptMessage = `Please check the following text for spelling errors. 
     List all the misspelled words with the key "words" in an array format.
@@ -63,15 +64,18 @@ export const SpellCheck = ({ onAfterLogout }) => {
 
       const newMisspelledWords = misspelledWordsArray.words;
 
-      setMisspelledWords((prev) => [...newMisspelledWords, ...prev]);
+      setMisspelledWords([...newMisspelledWords]);
+      setIsLoading(false);
     } catch (error) {
       console.error("Error during spell check:", error);
+      setIsLoading(false);
     }
   }, [enteredTextRef]);
 
   // debounce to prevent multiple calls to the API
-  const debouncedOnCheckSpelling = debounce(() => {
-    onCheckSpelling();
+  const debouncedOnCheckSpelling = debounce(async () => {
+    console.log("debouncedOnCheckSpelling");
+    await onCheckSpelling();
   }, 300);
 
   return (
@@ -147,7 +151,9 @@ export const SpellCheck = ({ onAfterLogout }) => {
           color="#0f0f0f"
           onChange={(e) => {
             enteredTextRef.current = e.target.value;
-            debouncedOnCheckSpelling();
+            if (!isLoading) {
+              debouncedOnCheckSpelling();
+            }
           }}
           InputProps={{
             sx: {
@@ -177,6 +183,9 @@ const MisspelledTextHighlighter = ({ text, misspelledWords }) => {
       const correctWord = misspelledWords.find(
         (word) => word.misspelledWord === matchedWord
       )?.correctWord;
+      if (!correctWord) {
+        return `<span style="color: red; font-weight: bold;">${matchedWord}</span>`;
+      }
       return `<tooltip title=${correctWord}><span style="color: red; font-weight: bold;">${matchedWord}</span></tooltip>`;
     });
 
